@@ -7,16 +7,22 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/", index)
-	http.HandleFunc("/echo", echo)
-	http.HandleFunc("/hello", hello)
+	http.HandleFunc("/", func(res http.ResponseWriter, _ *http.Request) {
+		sites := []string{url("/hello"), url("/echo")}
+		msg := fmt.Sprintf("%s\n", html(list(sites)))
+		mustWrite(res, msg)
+	})
+
+	http.HandleFunc("/echo", func(res http.ResponseWriter, req *http.Request) {
+		msg := fmt.Sprintf("%#v", req)
+		mustWrite(res, msg)
+	})
+
+	http.HandleFunc("/hello", func(res http.ResponseWriter, _ *http.Request) {
+		mustWrite(res, "Hello, World")
+	})
 
 	http.ListenAndServe(":8080", nil)
-}
-
-func index(response http.ResponseWriter, request *http.Request) {
-	sites := []string{url("/hello"), url("/echo")}
-	mustWrite(response, fmt.Sprintf("%s\n", html(list(sites))))
 }
 
 func url(relativePath string) string {
@@ -32,21 +38,8 @@ func list(rows []string) string {
 	for _, row := range rows {
 		contents += fmt.Sprintf("<li>%s</li>", row)
 	}
-
 	list := fmt.Sprintf("<ul>%s</ul>", contents)
-
 	return list
-}
-
-func echo(response http.ResponseWriter, request *http.Request) {
-	msg := fmt.Sprintf("%#v", request)
-	mustWrite(response, msg)
-
-	fmt.Printf("%#v\n===\n", response)
-}
-
-func hello(response http.ResponseWriter, request *http.Request) {
-	mustWrite(response, "Hello, World")
 }
 
 func mustWrite(response http.ResponseWriter, msg string) {

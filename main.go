@@ -15,6 +15,10 @@ func main() {
 	http.HandleFunc("/register", register)
 	http.HandleFunc("/register_click", register_click)
 
+	http.HandleFunc("/train", func(res http.ResponseWriter, _ *http.Request) {
+		mustWrite(res, "The train things go here")
+	})
+
 	http.ListenAndServe(":8080", nil)
 }
 

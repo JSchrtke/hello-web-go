@@ -6,17 +6,31 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
 func main() {
+	err := os.Remove("log.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	logfile, err := os.OpenFile(
+		"log.txt", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0755,
+	)
+	if err != nil {
+		log.Fatalf("error creating log file: %s", err.Error())
+	}
+	log.SetOutput(logfile)
+
 	http.HandleFunc("/", index)
 	http.HandleFunc("/echo", echo)
 	http.HandleFunc("/hello", hello)
 	http.HandleFunc("/register", register)
 	http.HandleFunc("/register_click", register_click)
 
-	err := http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Fatalf("error serving server: %s\n", err.Error())
 	}
@@ -27,8 +41,10 @@ func index(res http.ResponseWriter, _ *http.Request) {
 	msg := fmt.Sprintf("%s\n", makeHtml(makeList(sites)))
 	_, err := io.WriteString(res, msg)
 	if err != nil {
-		res.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error writing response: %s", err.Error())
+		errmsg := fmt.Sprintf("error writing response: %s\n", err.Error())
+		http.Error(res, errmsg, http.StatusInternalServerError)
+		log.Fatalf(errmsg)
+		fmt.Println(errmsg)
 	}
 }
 
@@ -36,16 +52,20 @@ func echo(res http.ResponseWriter, req *http.Request) {
 	msg := fmt.Sprintf("%#v", req)
 	_, err := io.WriteString(res, msg)
 	if err != nil {
-		res.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error writing response: %s", err.Error())
+		errmsg := fmt.Sprintf("error writing response: %s\n", err.Error())
+		http.Error(res, errmsg, http.StatusInternalServerError)
+		log.Fatalf(errmsg)
+		fmt.Println(errmsg)
 	}
 }
 
 func hello(res http.ResponseWriter, _ *http.Request) {
 	_, err := io.WriteString(res, "Hello, World!")
 	if err != nil {
-		res.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error writing response: %s", err.Error())
+		errmsg := fmt.Sprintf("error writing response: %s\n", err.Error())
+		http.Error(res, errmsg, http.StatusInternalServerError)
+		log.Fatalf(errmsg)
+		fmt.Println(errmsg)
 	}
 }
 
@@ -78,43 +98,46 @@ func register(res http.ResponseWriter, req *http.Request) {
 
 	_, err := io.WriteString(res, msg)
 	if err != nil {
-		res.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error writing response: %s", err.Error())
+		errmsg := fmt.Sprintf("error writing response: %s\n", err.Error())
+		http.Error(res, errmsg, http.StatusInternalServerError)
+		log.Fatalf(errmsg)
+		fmt.Println(errmsg)
 	}
 }
 
 func register_click(res http.ResponseWriter, req *http.Request) {
 	buf, err := io.ReadAll(req.Body)
 	if err != nil {
-		msg := fmt.Sprintf("error reading request: %s\n", err.Error())
+		errmsg := fmt.Sprintf("error reading request: %s", err.Error())
 		http.Error(
 			res,
-			msg,
+			errmsg,
 			http.StatusInternalServerError,
 		)
-		log.Println(msg)
-		return
+		log.Fatal(errmsg)
+		fmt.Println(errmsg)
 	}
 	if len(buf) == 0 {
-		msg :=  "error: no request data"
+		errmsg := "error: no request data"
 		http.Error(
-			res,msg, http.StatusInternalServerError,
+			res, errmsg, http.StatusInternalServerError,
 		)
-		log.Println(msg)
-		return
+		log.Fatal(errmsg)
+		fmt.Println(errmsg)
 	}
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(res).Encode(makeUser(buf))
 	if err != nil {
-		msg := fmt.Sprintf("error encoding response: %s", err.Error());
+		errmsg := fmt.Sprintf("error encoding response: %s", err.Error())
 		http.Error(
 			res,
-			msg,
+			errmsg,
 			http.StatusInternalServerError,
 		)
-		log.Println(msg)
+		log.Fatal(errmsg)
+		fmt.Println(errmsg)
 	}
 }
 

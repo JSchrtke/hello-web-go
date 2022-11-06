@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -15,26 +16,41 @@ func main() {
 	http.HandleFunc("/register", register)
 	http.HandleFunc("/register_click", register_click)
 
-	http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatalf("error serving server: %s\n", err.Error())
+	}
 }
 
 func index(res http.ResponseWriter, _ *http.Request) {
 	sites := []string{makeUrl("/hello"), makeUrl("/echo"), makeUrl("/register")}
 	msg := fmt.Sprintf("%s\n", makeHtml(makeList(sites)))
-	mustRespond(res, msg)
+	_, err := io.WriteString(res, msg)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error writing response: %s", err.Error())
+	}
 }
 
 func echo(res http.ResponseWriter, req *http.Request) {
 	msg := fmt.Sprintf("%#v", req)
-	mustRespond(res, msg)
+	_, err := io.WriteString(res, msg)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error writing response: %s", err.Error())
+	}
 }
 
 func hello(res http.ResponseWriter, _ *http.Request) {
-	mustRespond(res, "Hello, World")
+	_, err := io.WriteString(res, "Hello, World!")
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error writing response: %s", err.Error())
+	}
 }
 
 func register(res http.ResponseWriter, req *http.Request) {
-	mustRespond(res, `
+	msg := `
 <!DOCTYPE html>
 <html>
 	<body>
@@ -58,24 +74,33 @@ func register(res http.ResponseWriter, req *http.Request) {
 			<input type="submit" value="Register">
 		</form>
 	</body>
-</html>`,
-	)
+</html>`
+
+	_, err := io.WriteString(res, msg)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error writing response: %s", err.Error())
+	}
 }
 
 func register_click(res http.ResponseWriter, req *http.Request) {
 	buf, err := io.ReadAll(req.Body)
 	if err != nil {
+		msg := fmt.Sprintf("error reading request: %s\n", err.Error())
 		http.Error(
 			res,
-			fmt.Sprintf("error reading request: %s\n", err.Error()),
+			msg,
 			http.StatusInternalServerError,
 		)
+		log.Println(msg)
 		return
 	}
 	if len(buf) == 0 {
+		msg :=  "error: no request data"
 		http.Error(
-			res, "error: no request data", http.StatusInternalServerError,
+			res,msg, http.StatusInternalServerError,
 		)
+		log.Println(msg)
 		return
 	}
 
@@ -83,11 +108,13 @@ func register_click(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(res).Encode(makeUser(buf))
 	if err != nil {
+		msg := fmt.Sprintf("error encoding response: %s", err.Error());
 		http.Error(
 			res,
-			fmt.Sprintf("error encoding response: %s", err.Error()),
+			msg,
 			http.StatusInternalServerError,
 		)
+		log.Println(msg)
 	}
 }
 
@@ -106,17 +133,6 @@ func makeList(rows []string) string {
 	}
 	list := fmt.Sprintf("<ul>%s</ul>", contents)
 	return list
-}
-
-func mustRespond(response http.ResponseWriter, msg string) {
-	_, err := io.WriteString(response, msg)
-	mustOk(err)
-}
-
-func mustOk(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 type User struct {
